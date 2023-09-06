@@ -38,28 +38,32 @@ local function is_slot_free(inv, itemstack)
     return free_slots > 0
 end
 
-local function get_inventory_formspec(inv, playername, own_inv, owner_name)
-    local formspec = "size[8,10.5]" ..
-    "label[0,0;" .. "# MAIN INVENTORY: "..minetest.colorize("#00FF7F", playername).."]" ..
-    "label[0,5;" .. "# MAIN INVENTORY: "..minetest.colorize("#01B5F7", owner_name or "unknown").."]" ..
-    "box[-0.1,-0.1;8,0.7;black]" ..
-    "box[-0.1,4.9;8,0.7;black]" ..
-    "button_exit[0,9.9;2,1;cancel;Cancel]"
+local function build_inventory_formspec(inv, playername, own_inv, owner_name)
+    local elements = {
+        "size[8,10.5]",
+        "label[0,0;MAIN INVENTORY: " .. minetest.colorize("#00FF7F", playername or "unknown") .. "]",
+        "label[0,5;MAIN INVENTORY: " .. minetest.colorize("#01B5F7", owner_name or "unknown") .. "]",
+        "box[-0.1,-0.1;8,0.7;black]",
+        "box[-0.1,4.9;8,0.7;black]",
+        "button_exit[0,9.9;2,1;cancel;Cancel]"
+    }
 
     for i = 1, inv:get_size("main") do
         local itemstack = inv:get_stack("main", i)
         local itemname = itemstack:get_name()
         local itemcount = itemstack:get_count()
         
-        local item_image = "item_image[" .. (i-1)%8 .. "," .. math.floor((i-1)/8) + 0.8 .. ";1,1;" .. itemname .. "]"
-        local transfer_button = "image_button[" .. (i-1)%8 .. "," .. math.floor((i-1)/8) + 0.8 .. ";1,1;inv_manager_bg.png;transfer_"..playername.."_"..i..";]"
+        local item_image = "item_image[" .. (i-1) % 8 .. "," .. math.floor((i-1) / 8) + 0.8 .. ";1,1;" .. itemname .. "]"
+        local transfer_button = "image_button[" .. (i-1) % 8 .. "," .. math.floor((i-1) / 8) + 0.8 .. ";1,1;inv_manager_bg.png;transfer_" .. playername .. "_" .. i .. ";]"
         
         local itemcount_label = ""
         if itemcount > 1 then
-            itemcount_label = "label[" .. (i-0.95)%8 .. "," .. math.floor((i-1)/8) + 1.3 .. ";" .. itemcount .. "]"
+            itemcount_label = "label[" .. (i-0.95) % 8 .. "," .. math.floor((i-1) / 8) + 1.3 .. ";" .. itemcount .. "]"
         end
         
-        formspec = formspec .. item_image .. transfer_button .. itemcount_label
+        table.insert(elements, item_image)
+        table.insert(elements, transfer_button)
+        table.insert(elements, itemcount_label)
     end
 
     for p = 1, own_inv:get_size("main") do
@@ -67,49 +71,20 @@ local function get_inventory_formspec(inv, playername, own_inv, owner_name)
         local itemname = itemstack:get_name()
         local itemcount = itemstack:get_count()
         
-        local item_image = "item_image[" .. (p-1)%8 .. "," .. math.floor((p+23)/8) + 2.8 .. ";1,1;" .. itemname .. "]"
-        local transfer_button = "image_button[" .. (p-1)%8 .. "," .. math.floor((p+23)/8) + 2.8 .. ";1,1;inv_manager_bg.png;transfers_"..playername.."_"..p..";]"
+        local item_image = "item_image[" .. (p-1) % 8 .. "," .. math.floor((p+23) / 8) + 2.8 .. ";1,1;" .. itemname .. "]"
+        local transfer_button = "image_button[" .. (p-1) % 8 .. "," .. math.floor((p+23) / 8) + 2.8 .. ";1,1;inv_manager_bg.png;transfers_" .. playername .. "_" .. p .. ";]"
         
         local itemcount_label = ""
         if itemcount > 1 then
-            itemcount_label = "label[" .. (p-0.95)%8 .. "," .. math.floor((p+23)/8) + 3.3 .. ";" .. itemcount .. "]"
+            itemcount_label = "label[" .. (p-0.95) % 8 .. "," .. math.floor((p+23) / 8) + 3.3 .. ";" .. itemcount .. "]"
         end
         
-        formspec = formspec .. item_image .. transfer_button .. itemcount_label
+        table.insert(elements, item_image)
+        table.insert(elements, transfer_button)
+        table.insert(elements, itemcount_label)
     end
 
-    minetest.register_on_player_receive_fields(function(player, formname, fields)
-        if formname == "inv_manager:inventory" then
-            for i = 1, inv:get_size("main") do
-                if fields["transfer_"..playername.."_"..i] then
-                    local itemstack = inv:get_stack("main", i)
-                    local itemname = itemstack:get_name()
-                    local itemcount = itemstack:get_count()
-
-                    if is_slot_free(own_inv, ItemStack(itemname .. " " .. itemcount)) then
-                        inv:remove_item("main", ItemStack(itemname .. " " .. itemcount))
-                        own_inv:add_item("main", ItemStack(itemname .. " " .. itemcount))
-                    end
-                end
-            end
-            for p = 1, own_inv:get_size("main") do
-                if fields["transfers_"..playername.."_"..p] then
-                    local itemstack = own_inv:get_stack("main", p)
-                    local itemname = itemstack:get_name()
-                    local itemcount = itemstack:get_count()
-
-                    if is_slot_free(inv, ItemStack(itemname .. " " .. itemcount)) then
-                        own_inv:remove_item("main", ItemStack(itemname .. " " .. itemcount))
-                        inv:add_item("main", ItemStack(itemname .. " " .. itemcount))
-                    end
-                end
-            end
-            if fields.cancel then
-                minetest.close_formspec(playername, "inv_manager:inventory")
-            end
-        end
-    end)
-    return formspec
+    return table.concat(elements, "")
 end
 
 local function update_inventory_formspec(name, playername)
@@ -123,12 +98,47 @@ local function update_inventory_formspec(name, playername)
     local inv = player:get_inventory()
     local own_inv = owner:get_inventory()
     local owner_name = owner:get_player_name(name)
-    local formspec = get_inventory_formspec(inv, playername, own_inv, owner_name)
+    local formspec = build_inventory_formspec(inv, playername, own_inv, owner_name)
 
     minetest.show_formspec(name, "inv_manager:inventory", formspec)
+
+    minetest.register_on_player_receive_fields(function(player, formname, fields)
+        if formname == "inv_manager:inventory" then
+            if fields.cancel then
+                minetest.close_formspec(playername, "inv_manager:inventory")
+            end
+
+            for i = 1, inv:get_size("main") do
+                if fields["transfer_" .. playername .. "_" .. i] then
+                    local itemstack = inv:get_stack("main", i)
+                    local itemname = itemstack:get_name()
+                    local itemcount = itemstack:get_count()
+
+                    if is_slot_free(own_inv, ItemStack(itemname .. " " .. itemcount)) then
+                        inv:remove_item("main", ItemStack(itemname .. " " .. itemcount))
+                        own_inv:add_item("main", ItemStack(itemname .. " " .. itemcount))
+                    end
+                end
+            end
+
+            for p = 1, own_inv:get_size("main") do
+                if fields["transfers_" .. playername .. "_" .. p] then
+                    local itemstack = own_inv:get_stack("main", p)
+                    local itemname = itemstack:get_name()
+                    local itemcount = itemstack:get_count()
+
+                    if is_slot_free(inv, ItemStack(itemname .. " " .. itemcount)) then
+                        own_inv:remove_item("main", ItemStack(itemname .. " " .. itemcount))
+                        inv:add_item("main", ItemStack(itemname .. " " .. itemcount))
+                    end
+                end
+            end
+        end
+    end)
 end
 
 local inventory_lock = false
+
 local function check_player_online(playername, targetname)
     local player = minetest.get_player_by_name(targetname)
     if not player then
@@ -139,23 +149,23 @@ local function check_player_online(playername, targetname)
 end
 
 minetest.register_privilege("inv_manager", {
-	description = "Manage players inventory",
-	give_to_singleplayer = false,
+    description = "Manage players' inventory",
+    give_to_singleplayer = false,
 })
 
 minetest.register_chatcommand("inv_edit", {
-    description = "Manege player inventory",
+    description = "Manage player inventory",
     params = "<playername>",
     privs = {
-		inv_manager = true
-	},
+        inv_manager = true
+    },
     func = function(name, param)
         local player = minetest.get_player_by_name(param)
         if player then
+            local playername = player:get_player_name()
             if not inventory_lock then
                 inventory_lock = true
-                update_inventory_formspec(name, param)
-                local playername = player:get_player_name()
+                update_inventory_formspec(name, playername)
                 if not check_player_online(name, playername) then
                     inventory_lock = false
                     return
