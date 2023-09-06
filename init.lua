@@ -42,7 +42,7 @@ local function build_inventory_formspec(inv, playername, own_inv, owner_name)
     local elements = {
         "size[8,10.5]",
         "label[0,0;MAIN INVENTORY: " .. minetest.colorize("#00FF7F", playername or "unknown") .. "]",
-        "label[0,5;MAIN INVENTORY: " .. minetest.colorize("#01B5F7", owner_name or "unknown") .. "]",
+        "label[0,5.02;MAIN INVENTORY: " .. minetest.colorize("#01B5F7", owner_name or "unknown") .. "]",
         "box[-0.1,-0.1;8,0.7;black]",
         "box[-0.1,4.9;8,0.7;black]",
         "button_exit[0,9.9;2,1;cancel;Cancel]"
@@ -61,8 +61,10 @@ local function build_inventory_formspec(inv, playername, own_inv, owner_name)
             itemcount_label = "label[" .. (i-0.95) % 8 .. "," .. math.floor((i-1) / 8) + 1.3 .. ";" .. itemcount .. "]"
         end
         
+        local tooltip = "tooltip[transfer_" .. playername .. "_" .. i .. ";" .. itemname .. "]"
+        
         table.insert(elements, item_image)
-        table.insert(elements, transfer_button)
+        table.insert(elements, transfer_button .. tooltip)
         table.insert(elements, itemcount_label)
     end
 
@@ -79,8 +81,10 @@ local function build_inventory_formspec(inv, playername, own_inv, owner_name)
             itemcount_label = "label[" .. (p-0.95) % 8 .. "," .. math.floor((p+23) / 8) + 3.3 .. ";" .. itemcount .. "]"
         end
         
+        local tooltip = "tooltip[transfers_" .. playername .. "_" .. p .. ";" .. itemname .. "]"
+        
         table.insert(elements, item_image)
-        table.insert(elements, transfer_button)
+        table.insert(elements, transfer_button .. tooltip)
         table.insert(elements, itemcount_label)
     end
 
