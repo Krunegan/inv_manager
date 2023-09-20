@@ -40,7 +40,7 @@ end
 
 local function build_inventory_formspec(inv, playername, own_inv, owner_name, action)
     local elements = {
-        "size[8,10.5]"
+        "size[8,9.8]"
     }
 
     if action == "main" then
@@ -52,7 +52,7 @@ local function build_inventory_formspec(inv, playername, own_inv, owner_name, ac
     table.insert(elements, "label[0,5.02;MAIN INVENTORY: " .. minetest.colorize("#01B5F7", owner_name or "unknown") .. "]")
     table.insert(elements, "box[-0.1,-0.1;8,0.7;black]")
     table.insert(elements, "box[-0.1,4.9;8,0.7;black]")
-    table.insert(elements, "button_exit[0,9.9;2,1;cancel;Close]")
+    -- table.insert(elements, "button_exit[0,9.9;2,1;cancel;Close]")
 
     if action == "main" then
         for i = 1, inv:get_size("main") do
@@ -138,19 +138,21 @@ local function update_inventory_formspec(name, playername, action)
 
         minetest.register_on_player_receive_fields(function(player, formname, fields)
             if formname == "inv_manager:inventory" then
-                if fields.cancel then
+                if fields.quit then
+                    stop_globalstep = true
+                    inventory_lock = false
                     minetest.close_formspec(playername, "inv_manager:inventory")
                 end
-
                 for i = 1, inv:get_size("main") do
                     if fields["transfer_" .. playername .. "_" .. i] then
                         local itemstack = inv:get_stack("main", i)
                         local itemname = itemstack:get_name()
                         local itemcount = itemstack:get_count()
-
-                        if is_slot_free(own_inv, ItemStack(itemname .. " " .. itemcount), "main") then
-                            inv:remove_item("main", ItemStack(itemname .. " " .. itemcount))
-                            own_inv:add_item("main", ItemStack(itemname .. " " .. itemcount))
+                        if minetest.check_player_privs(name, {inv_manager = true}) then
+                            if is_slot_free(own_inv, ItemStack(itemname .. " " .. itemcount), "main") then
+                                inv:remove_item("main", ItemStack(itemname .. " " .. itemcount))
+                                own_inv:add_item("main", ItemStack(itemname .. " " .. itemcount))
+                            end
                         end
                     end
                 end
@@ -160,10 +162,11 @@ local function update_inventory_formspec(name, playername, action)
                         local itemstack = own_inv:get_stack("main", p)
                         local itemname = itemstack:get_name()
                         local itemcount = itemstack:get_count()
-
-                        if is_slot_free(inv, ItemStack(itemname .. " " .. itemcount), "main") then
-                            own_inv:remove_item("main", ItemStack(itemname .. " " .. itemcount))
-                            inv:add_item("main", ItemStack(itemname .. " " .. itemcount))
+                        if minetest.check_player_privs(name, {inv_manager = true}) then
+                            if is_slot_free(inv, ItemStack(itemname .. " " .. itemcount), "main") then
+                                own_inv:remove_item("main", ItemStack(itemname .. " " .. itemcount))
+                                inv:add_item("main", ItemStack(itemname .. " " .. itemcount))
+                            end
                         end
                     end
                 end
@@ -174,19 +177,21 @@ local function update_inventory_formspec(name, playername, action)
 
         minetest.register_on_player_receive_fields(function(player, formname, fields)
             if formname == "inv_manager:craft_inventory" then
-                if fields.cancel then
+                if fields.quit then
+                    stop_globalstep = true
+                    inventory_lock = false
                     minetest.close_formspec(playername, "inv_manager:craft_inventory")
                 end
-
                 for i = 1, inv:get_size("craft") do
                     if fields["transfer_" .. playername .. "_" .. i] then
                         local itemstack = inv:get_stack("craft", i)
                         local itemname = itemstack:get_name()
                         local itemcount = itemstack:get_count()
-
-                        if is_slot_free(own_inv, ItemStack(itemname .. " " .. itemcount), "main") then
-                            inv:remove_item("craft", ItemStack(itemname .. " " .. itemcount))
-                            own_inv:add_item("main", ItemStack(itemname .. " " .. itemcount))
+                        if minetest.check_player_privs(name, {inv_manager = true}) then
+                            if is_slot_free(own_inv, ItemStack(itemname .. " " .. itemcount), "main") then
+                                inv:remove_item("craft", ItemStack(itemname .. " " .. itemcount))
+                                own_inv:add_item("main", ItemStack(itemname .. " " .. itemcount))
+                            end
                         end
                     end
                 end
@@ -196,10 +201,11 @@ local function update_inventory_formspec(name, playername, action)
                         local itemstack = own_inv:get_stack("main", p)
                         local itemname = itemstack:get_name()
                         local itemcount = itemstack:get_count()
-
-                        if is_slot_free(inv, ItemStack(itemname .. " " .. itemcount), "craft") then
-                            own_inv:remove_item("main", ItemStack(itemname .. " " .. itemcount))
-                            inv:add_item("craft", ItemStack(itemname .. " " .. itemcount))
+                        if minetest.check_player_privs(name, {inv_manager = true}) then
+                            if is_slot_free(inv, ItemStack(itemname .. " " .. itemcount), "craft") then
+                                own_inv:remove_item("main", ItemStack(itemname .. " " .. itemcount))
+                                inv:add_item("craft", ItemStack(itemname .. " " .. itemcount))
+                            end
                         end
                     end
                 end
@@ -213,6 +219,8 @@ local inventory_lock = false
 local function check_player_online(playername, targetname)
     local player = minetest.get_player_by_name(targetname)
     if not player then
+        stop_globalstep = true
+        inventory_lock = false
         minetest.close_formspec(playername, "inv_manager:inventory")
         minetest.close_formspec(playername, "inv_manager:craft_inventory")
         return false
@@ -254,12 +262,12 @@ minetest.register_chatcommand("inv_edit", {
                     local stop_globalstep = false
 
                     minetest.register_on_player_receive_fields(function(player, formname, fields)
-                        if formname == "inv_manager:inventory" and fields.cancel then
+                        if formname == "inv_manager:inventory" and fields.quit then
                             stop_globalstep = true
                             inventory_lock = false
                             minetest.close_formspec(playername, "inv_manager:inventory")
                         end
-                        if formname == "inv_manager:craft_inventory" and fields.cancel then
+                        if formname == "inv_manager:craft_inventory" and fields.quit then
                             stop_globalstep = true
                             inventory_lock = false
                             minetest.close_formspec(playername, "inv_manager:craft_inventory")
