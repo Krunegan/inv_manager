@@ -5,4 +5,3 @@ To use it, you must have the "inv_manager" privilege and type the command "/inv_
 ## License
 
 * MIT License (MIT) for the code.
-* Attribution 4.0 International (CC BY 4.0) for textures.
