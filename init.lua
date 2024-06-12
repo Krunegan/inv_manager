@@ -1,7 +1,7 @@
 --[[
 
 The MIT License (MIT)
-Copyright (C) 2023 Acronymmk
+Copyright (C) 2024 Flay Krunegan
 
 Permission is hereby granted, free of charge, to any person obtaining a copy of this
 software and associated documentation files (the "Software"), to deal in the Software
@@ -21,280 +21,243 @@ DEALINGS IN THE SOFTWARE.
 
 ]]
 
-local function is_slot_free(inv, itemstack, inventory_name)
-    local free_slots = 0
-
-    for i = 1, inv:get_size(inventory_name) do
-        local stack = inv:get_stack(inventory_name, i)
-        if stack:is_empty() then
-            free_slots = free_slots + 1
-        elseif stack:get_name() == itemstack:get_name() then
-            local space_left = stack:get_free_space()
-            if space_left > 0 then
-                free_slots = free_slots + 1
-            end
-        end
-    end
-    return free_slots > 0
-end
-
-local function build_inventory_formspec(inv, playername, own_inv, owner_name, action)
-    local elements = {
-        "size[8,9.8]"
-    }
-
-    if action == "main" then
-        table.insert(elements, "label[0,0;MAIN INVENTORY: " .. minetest.colorize("#00FF7F", playername or "unknown") .. "]")
-    elseif action == "craft" then
-        table.insert(elements, "label[0,0;CRAFT INVENTORY: " .. minetest.colorize("#00FF7F", playername or "unknown") .. "]")
-    end
-
-    table.insert(elements, "label[0,5.02;MAIN INVENTORY: " .. minetest.colorize("#01B5F7", owner_name or "unknown") .. "]")
-    table.insert(elements, "box[-0.1,-0.1;8,0.7;black]")
-    table.insert(elements, "box[-0.1,4.9;8,0.7;black]")
-    -- table.insert(elements, "button_exit[0,9.9;2,1;cancel;Close]")
-
-    if action == "main" then
-        for i = 1, inv:get_size("main") do
-            local itemstack = inv:get_stack("main", i)
-            local itemname = itemstack:get_name()
-            local itemcount = itemstack:get_count()
-            
-            local item_image = "item_image[" .. (i-1) % 8 .. "," .. math.floor((i-1) / 8) + 0.8 .. ";1,1;" .. itemname .. "]"
-            local transfer_button = "image_button[" .. (i-1) % 8 .. "," .. math.floor((i-1) / 8) + 0.8 .. ";1,1;inv_manager_bg.png;transfer_" .. playername .. "_" .. i .. ";]"
-            
-            local itemcount_label = ""
-            if itemcount > 1 then
-                itemcount_label = "label[" .. (i-0.95) % 8 .. "," .. math.floor((i-1) / 8) + 1.3 .. ";" .. itemcount .. "]"
-            end
-            
-            local tooltip = "tooltip[transfer_" .. playername .. "_" .. i .. ";" .. itemname .. "]"
-            
-            table.insert(elements, item_image)
-            table.insert(elements, transfer_button .. tooltip)
-            table.insert(elements, itemcount_label)
-        end
-    elseif action == "craft" then
-        for i = 1, inv:get_size("craft") do
-            local itemstack = inv:get_stack("craft", i)
-            local itemname = itemstack:get_name()
-            local itemcount = itemstack:get_count()
-            
-            local item_image = "item_image[" .. (i-1) % 3 + 2.5 .. "," .. math.floor((i-1) / 3) + 0.8 .. ";1,1;" .. itemname .. "]"
-            local transfer_button = "image_button[" .. (i-1) % 3 + 2.5 .. "," .. math.floor((i-1) / 3) + 0.8 .. ";1,1;inv_manager_bg.png;transfer_" .. playername .. "_" .. i .. ";]"
-            
-            local itemcount_label = ""
-            if itemcount > 1 then
-                itemcount_label = "label[" .. (i-0.95) % 3 + 2.5 .. "," .. math.floor((i-1) / 3) + 1.3 .. ";" .. itemcount .. "]"
-            end
-            
-            local tooltip = "tooltip[transfer_" .. playername .. "_" .. i .. ";" .. itemname .. "]"
-            
-            table.insert(elements, item_image)
-            table.insert(elements, transfer_button .. tooltip)
-            table.insert(elements, itemcount_label)
-        end
-    end
-
-    for p = 1, own_inv:get_size("main") do
-        local itemstack = own_inv:get_stack("main", p)
-        local itemname = itemstack:get_name()
-        local itemcount = itemstack:get_count()
-        
-        local item_image = "item_image[" .. (p-1) % 8 .. "," .. math.floor((p+23) / 8) + 2.8 .. ";1,1;" .. itemname .. "]"
-        local transfer_button = "image_button[" .. (p-1) % 8 .. "," .. math.floor((p+23) / 8) + 2.8 .. ";1,1;inv_manager_bg.png;transfers_" .. playername .. "_" .. p .. ";]"
-        
-        local itemcount_label = ""
-        if itemcount > 1 then
-            itemcount_label = "label[" .. (p-0.95) % 8 .. "," .. math.floor((p+23) / 8) + 3.3 .. ";" .. itemcount .. "]"
-        end
-        
-        local tooltip = "tooltip[transfers_" .. playername .. "_" .. p .. ";" .. itemname .. "]"
-        
-        table.insert(elements, item_image)
-        table.insert(elements, transfer_button .. tooltip)
-        table.insert(elements, itemcount_label)
-    end
-
-    return table.concat(elements, "")
-end
-
-
-local function update_inventory_formspec(name, playername, action)
-    local player = minetest.get_player_by_name(playername)
-    local owner = minetest.get_player_by_name(name)
-
-    if not player then
-        return
-    end
-
-    local inv = player:get_inventory()
-    local own_inv = owner:get_inventory()
-    local owner_name = owner:get_player_name(name)
-    local formspec = build_inventory_formspec(inv, playername, own_inv, owner_name, action)
-
-    if action == "main" then
-        minetest.show_formspec(name, "inv_manager:inventory", formspec)
-
-        minetest.register_on_player_receive_fields(function(player, formname, fields)
-            if formname == "inv_manager:inventory" then
-                if fields.quit then
-                    stop_globalstep = true
-                    inventory_lock = false
-                    minetest.close_formspec(playername, "inv_manager:inventory")
-                end
-                for i = 1, inv:get_size("main") do
-                    if fields["transfer_" .. playername .. "_" .. i] then
-                        local itemstack = inv:get_stack("main", i)
-                        local itemname = itemstack:get_name()
-                        local itemcount = itemstack:get_count()
-                        if minetest.check_player_privs(name, {inv_manager = true}) then
-                            if is_slot_free(own_inv, ItemStack(itemname .. " " .. itemcount), "main") then
-                                inv:remove_item("main", ItemStack(itemname .. " " .. itemcount))
-                                own_inv:add_item("main", ItemStack(itemname .. " " .. itemcount))
-                            end
-                        end
-                    end
-                end
-
-                for p = 1, own_inv:get_size("main") do
-                    if fields["transfers_" .. playername .. "_" .. p] then
-                        local itemstack = own_inv:get_stack("main", p)
-                        local itemname = itemstack:get_name()
-                        local itemcount = itemstack:get_count()
-                        if minetest.check_player_privs(name, {inv_manager = true}) then
-                            if is_slot_free(inv, ItemStack(itemname .. " " .. itemcount), "main") then
-                                own_inv:remove_item("main", ItemStack(itemname .. " " .. itemcount))
-                                inv:add_item("main", ItemStack(itemname .. " " .. itemcount))
-                            end
-                        end
-                    end
-                end
-            end
-        end)
-    elseif action == "craft" then
-        minetest.show_formspec(name, "inv_manager:craft_inventory", formspec)
-
-        minetest.register_on_player_receive_fields(function(player, formname, fields)
-            if formname == "inv_manager:craft_inventory" then
-                if fields.quit then
-                    stop_globalstep = true
-                    inventory_lock = false
-                    minetest.close_formspec(playername, "inv_manager:craft_inventory")
-                end
-                for i = 1, inv:get_size("craft") do
-                    if fields["transfer_" .. playername .. "_" .. i] then
-                        local itemstack = inv:get_stack("craft", i)
-                        local itemname = itemstack:get_name()
-                        local itemcount = itemstack:get_count()
-                        if minetest.check_player_privs(name, {inv_manager = true}) then
-                            if is_slot_free(own_inv, ItemStack(itemname .. " " .. itemcount), "main") then
-                                inv:remove_item("craft", ItemStack(itemname .. " " .. itemcount))
-                                own_inv:add_item("main", ItemStack(itemname .. " " .. itemcount))
-                            end
-                        end
-                    end
-                end
-
-                for p = 1, own_inv:get_size("main") do
-                    if fields["transfers_" .. playername .. "_" .. p] then
-                        local itemstack = own_inv:get_stack("main", p)
-                        local itemname = itemstack:get_name()
-                        local itemcount = itemstack:get_count()
-                        if minetest.check_player_privs(name, {inv_manager = true}) then
-                            if is_slot_free(inv, ItemStack(itemname .. " " .. itemcount), "craft") then
-                                own_inv:remove_item("main", ItemStack(itemname .. " " .. itemcount))
-                                inv:add_item("craft", ItemStack(itemname .. " " .. itemcount))
-                            end
-                        end
-                    end
-                end
-            end
-        end)
-    end
-end
-
-local inventory_lock = false
-
-local function check_player_online(playername, targetname)
-    local player = minetest.get_player_by_name(targetname)
-    if not player then
-        stop_globalstep = true
-        inventory_lock = false
-        minetest.close_formspec(playername, "inv_manager:inventory")
-        minetest.close_formspec(playername, "inv_manager:craft_inventory")
-        return false
-    end
-    return true
-end
-
 minetest.register_privilege("inv_manager", {
     description = "Manage players' inventory",
     give_to_singleplayer = false,
 })
 
-minetest.register_chatcommand("inv_edit", {
-    description = "Manage player inventory",
-    params = "<playername> <action>",
+minetest.register_chatcommand("invm", {
+    params = "<player>",
+    description = "View and modify a player's main inventory",
     privs = {
         inv_manager = true
     },
     func = function(name, param)
-        local params = param:split(" ")
-        if #params ~= 2 then
-            minetest.chat_send_player(name, "*** Server: wrong use, /inv_edit <playername> <main|craft>")
+        local player = minetest.get_player_by_name(name)
+        local target_player = minetest.get_player_by_name(param)
+
+        if not player or not target_player then
+            minetest.chat_send_player(name, "Player not found.")
             return
         end
 
-        local player = minetest.get_player_by_name(params[1])
-        if player then
-            local playername = player:get_player_name()
-            if params[2] == "main" or params[2] == "craft" then
-                if not inventory_lock then
-                    inventory_lock = true
-                    update_inventory_formspec(name, playername, params[2])
-                    if not check_player_online(name, playername) then
-                        inventory_lock = false
+        if name == param then
+            minetest.chat_send_player(name, "You can't use this command on yourself.")
+            return
+        end
+
+        local player_inv = player:get_inventory()
+        local target_inv = target_player:get_inventory()
+
+        local player_name = player:get_player_name()
+        local target_name = target_player:get_player_name()
+        local formspec_name = "inv_manager:inventory_" .. player_name
+        local formspec = "size[8,10]"
+        local quit_button_clicked = false
+
+        local function update_formspec()
+            if not player or not target_player or quit_button_clicked then
+                return
+            end
+
+            local target_list_updated = target_inv:get_list("main")
+            local player_list_updated = player_inv:get_list("main")
+
+            formspec = "size[8,9]"
+            formspec = formspec .. "label[0,0;"..target_name.."'s Inventory]"
+            formspec = formspec .. "list[detached:target_inventory_" .. player_name .. ";target_inventory;0,0.55;8,4;]"
+            minetest.create_detached_inventory("target_inventory_" .. player_name, {
+                allow_move = function(inv, from_list, from_index, to_list, to_index, count, player)
+                    local player_name = player:get_player_name()
+                    if not minetest.check_player_privs(player_name, {inv_manager=true}) then
+                        minetest.chat_send_player(player_name, "You no longer have the 'inv_manager' privilege.")
+                        return 0
+                    end
+                    return count
+                end,                
+                on_put = function(inv, listname, index, stack, player)
+                    local player_name = player:get_player_name()
+                    if not minetest.check_player_privs(player_name, {inv_manager=true}) then
+                        minetest.chat_send_player(player_name, "You no longer have the 'inv_manager' privilege.")
                         return
                     end
-
-                    local timer = 0
-                    local stop_globalstep = false
-
-                    minetest.register_on_player_receive_fields(function(player, formname, fields)
-                        if formname == "inv_manager:inventory" and fields.quit then
-                            stop_globalstep = true
-                            inventory_lock = false
-                            minetest.close_formspec(playername, "inv_manager:inventory")
-                        end
-                        if formname == "inv_manager:craft_inventory" and fields.quit then
-                            stop_globalstep = true
-                            inventory_lock = false
-                            minetest.close_formspec(playername, "inv_manager:craft_inventory")
-                        end
-                    end)
-
-                    minetest.register_globalstep(function(dtime)
-                        if not stop_globalstep then
-                            timer = timer + dtime
-                            if timer >= 1 then
-                                if not check_player_online(name, playername) then
-                                    inventory_lock = false
-                                    return
-                                end
-                                update_inventory_formspec(name, playername, params[2])
-                                timer = 0
+                    if listname == "target_inventory" then
+                        local existing_stack = target_list_updated[index]
+                        if existing_stack:is_empty() then
+                            target_list_updated[index] = stack
+                        else
+                            local leftover = existing_stack:add_item(stack)
+                            target_list_updated[index] = existing_stack
+                            if not leftover:is_empty() then
+                                player_inv:add_item("main", leftover)
                             end
                         end
-                    end)
-                else
-                    minetest.chat_send_player(name, "*** Server: only 1 moderator/admin can use this command at a time. Please try again later.")
-                end
-            else
-                minetest.chat_send_player(name, "*** Server: Invalid action, use '/inv_edit <playername> <main|craft>'.")
-            end
-        else
-            minetest.chat_send_player(name, "*** Server: player '" .. params[1] .. "' not found.")
+                        target_inv:set_list("main", target_list_updated)
+                        minetest.log("action", name .. " moved " .. stack:get_name() .. " to " .. param .. "'s inventory.")
+                    end
+                end,
+                on_take = function(inv, listname, index, stack, player)
+                    local player_name = player:get_player_name()
+                    if not minetest.check_player_privs(player_name, {inv_manager=true}) then
+                        minetest.chat_send_player(player_name, "You no longer have the 'inv_manager' privilege.")
+                        return
+                    end
+                    if listname == "target_inventory" then
+                        target_list_updated[index] = ItemStack("")
+                        target_inv:set_list("main", target_list_updated)
+                        minetest.log("action", name .. " took " .. stack:get_name() .. " from " .. param .. "'s inventory.")
+                    end
+                end,
+                on_move = function(inv, from_list, from_index, to_list, to_index, count, player)
+                    local player_name = player:get_player_name()
+                    if not minetest.check_player_privs(player_name, {inv_manager=true}) then
+                        minetest.chat_send_player(player_name, "You no longer have the 'inv_manager' privilege.")
+                        return
+                    end
+                    if from_list == "target_inventory" and to_list == "target_inventory" then
+                        local stack = target_list_updated[from_index]
+                        target_list_updated[from_index] = target_list_updated[to_index]
+                        target_list_updated[to_index] = stack
+                        target_inv:set_list("main", target_list_updated)
+                    end
+                end,
+            }, player_name):set_list("target_inventory", target_list_updated)
+
+            formspec = formspec .. "label[0,4.55;"..name.."'s Inventory]"
+            formspec = formspec .. "list[current_player;main;0,5.08;8,1;]"
+            formspec = formspec .. "list[current_player;main;0,6.08;8,3;8]"
+
+            -- formspec = formspec .. "button_exit[6.5,8.2;1,0.5;cancel;Cancel]"
+
+            minetest.show_formspec(name, formspec_name, formspec)
+            minetest.after(1, update_formspec)
         end
-    end
+
+        update_formspec()
+
+        minetest.register_on_player_receive_fields(function(player, formname, fields)
+            if formname == formspec_name and fields.quit then
+                quit_button_clicked = true
+                minetest.close_formspec(name, formspec_name)
+            end
+        end)
+    end,
+})
+
+minetest.register_chatcommand("invc", {
+    params = "<player>",
+    description = "View and modify a player's crafting inventory",
+    privs = {
+        inv_manager = true
+    },
+    func = function(name, param)
+        local player = minetest.get_player_by_name(name)
+        local target_player = minetest.get_player_by_name(param)
+
+        if not player or not target_player then
+            minetest.chat_send_player(name, "Player not found.")
+            return
+        end
+
+        if name == param then
+            minetest.chat_send_player(name, "You can't use this command on yourself.")
+            return
+        end
+
+        local player_inv = player:get_inventory()
+        local target_inv = target_player:get_inventory()
+
+        local player_name = player:get_player_name()
+        local target_name = target_player:get_player_name()
+        local formspec_name = "inv_manager:craft_inventory_" .. player_name
+        local formspec = "size[8,10]"
+        local quit_button_clicked = false
+
+        local function update_formspec()
+            if not player or not target_player or quit_button_clicked then
+                return
+            end
+
+            local target_craft_list_updated = target_inv:get_list("craft")
+            local player_main_list_updated = player_inv:get_list("main")
+
+            formspec = "size[8,9]"
+            formspec = formspec .. "label[0,0;"..target_name.."'s Inventory]"
+            formspec = formspec .. "list[detached:target_craft_inventory_" .. player_name .. ";target_craft_inventory;0,0.55;3,3;]"
+            minetest.create_detached_inventory("target_craft_inventory_" .. player_name, {
+                allow_move = function(inv, from_list, from_index, to_list, to_index, count, player)
+                    local player_name = player:get_player_name()
+                    if not minetest.check_player_privs(player_name, {inv_manager=true}) then
+                        minetest.chat_send_player(player_name, "You no longer have the 'inv_manager' privilege.")
+                        return 0
+                    end
+                    return count
+                end,                
+                on_put = function(inv, listname, index, stack, player)
+                    local player_name = player:get_player_name()
+                    if not minetest.check_player_privs(player_name, {inv_manager=true}) then
+                        minetest.chat_send_player(player_name, "You no longer have the 'inv_manager' privilege.")
+                        return
+                    end
+                    if listname == "target_craft_inventory" then
+                        local existing_stack = target_craft_list_updated[index]
+                        if existing_stack:is_empty() then
+                            target_craft_list_updated[index] = stack
+                        else
+                            local leftover = existing_stack:add_item(stack)
+                            target_craft_list_updated[index] = existing_stack
+                            if not leftover:is_empty() then
+                                player_inv:add_item("main", leftover)
+                            end
+                        end
+                        target_inv:set_list("craft", target_craft_list_updated)
+                        minetest.log("action", name .. " moved " .. stack:get_name() .. " to " .. param .. "'s crafting inventory.")
+                    end
+                end,
+                on_take = function(inv, listname, index, stack, player)
+                    local player_name = player:get_player_name()
+                    if not minetest.check_player_privs(player_name, {inv_manager=true}) then
+                        minetest.chat_send_player(player_name, "You no longer have the 'inv_manager' privilege.")
+                        return
+                    end
+                    if listname == "target_craft_inventory" then
+                        target_craft_list_updated[index] = ItemStack("")
+                        target_inv:set_list("craft", target_craft_list_updated)
+                        minetest.log("action", name .. " took " .. stack:get_name() .. " from " .. param .. "'s crafting inventory.")
+                    end
+                end,
+                on_move = function(inv, from_list, from_index, to_list, to_index, count, player)
+                    local player_name = player:get_player_name()
+                    if not minetest.check_player_privs(player_name, {inv_manager=true}) then
+                        minetest.chat_send_player(player_name, "You no longer have the 'inv_manager' privilege.")
+                        return
+                    end
+                    if from_list == "target_craft_inventory" and to_list == "target_craft_inventory" then
+                        local stack = target_craft_list_updated[from_index]
+                        target_craft_list_updated[from_index] = target_craft_list_updated[to_index]
+                        target_craft_list_updated[to_index] = stack
+                        target_inv:set_list("craft", target_craft_list_updated)
+                    end
+                end,
+            }, player_name):set_list("target_craft_inventory", target_craft_list_updated)
+
+            formspec = formspec .. "label[0,4.55;"..name.."'s Inventory]"
+            formspec = formspec .. "list[current_player;main;0,5.08;8,1;]"
+            formspec = formspec .. "list[current_player;main;0,6.08;8,3;8]"
+
+            -- formspec = formspec .. "button_exit[6.5,8.2;1,0.5;cancel;Cancel]"
+
+            minetest.show_formspec(name, formspec_name, formspec)
+            minetest.after(1, update_formspec)
+        end
+
+        update_formspec()
+
+        minetest.register_on_player_receive_fields(function(player, formname, fields)
+            if formname == formspec_name and fields.quit then
+                quit_button_clicked = true
+                minetest.close_formspec(name, formspec_name)
+            end
+        end)
+    end,
 })
