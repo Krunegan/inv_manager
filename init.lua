@@ -21,7 +21,7 @@ DEALINGS IN THE SOFTWARE.
 
 ]]
 
-minetest.register_privilege("inv_manager", {
+core.register_privilege("inv_manager", {
     description = "Manage players' inventory",
     give_to_singleplayer = false,
 })
@@ -29,37 +29,37 @@ minetest.register_privilege("inv_manager", {
 local quit_flags = {}
 
 local function handle_receive_fields(player, formname, fields)
-    if formname:match("^inv_manager:inventory_") or formname:match("^inv_manager:craft_inventory_") or formname:match("^inv_manager:bag_inventory_") then
+    if formname:match("^inv_manager:inventory_") or formname:match("^inv_manager:craft_inventory_") or formname:match("^inv_manager:bag_inventory_") or formname:match("^inv_manager:armor_inventory_") then
         if fields.quit then
             local player_name = player:get_player_name()
             quit_flags[player_name] = true
-            minetest.close_formspec(player_name, formname)
-            minetest.after(1, function()
+            core.close_formspec(player_name, formname)
+            core.after(1, function()
                 quit_flags[player_name] = nil
             end)
         end
     end
 end
 
-minetest.register_on_player_receive_fields(handle_receive_fields)
+core.register_on_player_receive_fields(handle_receive_fields)
 
-minetest.register_chatcommand("invm", {
+core.register_chatcommand("invm", {
     params = "<player>",
     description = "View and modify a player's main inventory",
     privs = {
         inv_manager = true
     },
     func = function(name, param)
-        local player = minetest.get_player_by_name(name)
-        local target_player = minetest.get_player_by_name(param)
+        local player = core.get_player_by_name(name)
+        local target_player = core.get_player_by_name(param)
 
         if not player or not target_player then
-            minetest.chat_send_player(name, "Player not found.")
+            core.chat_send_player(name, "Player not found.")
             return
         end
 
         if name == param then
-            minetest.chat_send_player(name, "You can't use this command on yourself.")
+            core.chat_send_player(name, "You can't use this command on yourself.")
             return
         end
 
@@ -73,7 +73,10 @@ minetest.register_chatcommand("invm", {
         local quit_button_clicked = false
 
         local function update_formspec()
-            if not player or not target_player or quit_flags[name] then
+            local target_obj = core.get_player_by_name(target_name)
+            local player_obj = core.get_player_by_name(player_name)
+            if not player_obj or not target_obj or quit_flags[name] then
+                core.close_formspec(player_name, formspec_name)
                 return
             end
 
@@ -83,19 +86,19 @@ minetest.register_chatcommand("invm", {
             formspec = "size[8,9]"
             formspec = formspec .. "label[0,0;"..target_name.."'s Inventory]"
             formspec = formspec .. "list[detached:target_inventory_" .. player_name .. ";target_inventory;0,0.55;8,4;]"
-            minetest.create_detached_inventory("target_inventory_" .. player_name, {
+            core.create_detached_inventory("target_inventory_" .. player_name, {
                 allow_move = function(inv, from_list, from_index, to_list, to_index, count, player)
                     local player_name = player:get_player_name()
-                    if not minetest.check_player_privs(player_name, {inv_manager=true}) then
-                        minetest.chat_send_player(player_name, "You no longer have the 'inv_manager' privilege.")
+                    if not core.check_player_privs(player_name, {inv_manager=true}) then
+                        core.chat_send_player(player_name, "You no longer have the 'inv_manager' privilege.")
                         return 0
                     end
                     return count
                 end,                
                 on_put = function(inv, listname, index, stack, player)
                     local player_name = player:get_player_name()
-                    if not minetest.check_player_privs(player_name, {inv_manager=true}) then
-                        minetest.chat_send_player(player_name, "You no longer have the 'inv_manager' privilege.")
+                    if not core.check_player_privs(player_name, {inv_manager=true}) then
+                        core.chat_send_player(player_name, "You no longer have the 'inv_manager' privilege.")
                         return
                     end
                     if listname == "target_inventory" then
@@ -110,25 +113,25 @@ minetest.register_chatcommand("invm", {
                             end
                         end
                         target_inv:set_list("main", target_list_updated)
-                        minetest.log("action", name .. " moved " .. stack:get_name() .. " to " .. param .. "'s inventory.")
+                        core.log("action", name .. " moved " .. stack:get_name() .. " to " .. param .. "'s inventory.")
                     end
                 end,
                 on_take = function(inv, listname, index, stack, player)
                     local player_name = player:get_player_name()
-                    if not minetest.check_player_privs(player_name, {inv_manager=true}) then
-                        minetest.chat_send_player(player_name, "You no longer have the 'inv_manager' privilege.")
+                    if not core.check_player_privs(player_name, {inv_manager=true}) then
+                        core.chat_send_player(player_name, "You no longer have the 'inv_manager' privilege.")
                         return
                     end
                     if listname == "target_inventory" then
                         target_list_updated[index] = ItemStack("")
                         target_inv:set_list("main", target_list_updated)
-                        minetest.log("action", name .. " took " .. stack:get_name() .. " from " .. param .. "'s inventory.")
+                        core.log("action", name .. " took " .. stack:get_name() .. " from " .. param .. "'s inventory.")
                     end
                 end,
                 on_move = function(inv, from_list, from_index, to_list, to_index, count, player)
                     local player_name = player:get_player_name()
-                    if not minetest.check_player_privs(player_name, {inv_manager=true}) then
-                        minetest.chat_send_player(player_name, "You no longer have the 'inv_manager' privilege.")
+                    if not core.check_player_privs(player_name, {inv_manager=true}) then
+                        core.chat_send_player(player_name, "You no longer have the 'inv_manager' privilege.")
                         return
                     end
                     if from_list == "target_inventory" and to_list == "target_inventory" then
@@ -146,31 +149,31 @@ minetest.register_chatcommand("invm", {
 
             -- formspec = formspec .. "button_exit[6.5,8.2;1,0.5;cancel;Cancel]"
 
-            minetest.show_formspec(name, formspec_name, formspec)
-            minetest.after(1, update_formspec)
+            core.show_formspec(name, formspec_name, formspec)
+            core.after(1, update_formspec)
         end
 
         update_formspec()
     end,
 })
 
-minetest.register_chatcommand("invc", {
+core.register_chatcommand("invc", {
     params = "<player>",
     description = "View and modify a player's crafting inventory",
     privs = {
         inv_manager = true
     },
     func = function(name, param)
-        local player = minetest.get_player_by_name(name)
-        local target_player = minetest.get_player_by_name(param)
+        local player = core.get_player_by_name(name)
+        local target_player = core.get_player_by_name(param)
 
         if not player or not target_player then
-            minetest.chat_send_player(name, "Player not found.")
+            core.chat_send_player(name, "Player not found.")
             return
         end
 
         if name == param then
-            minetest.chat_send_player(name, "You can't use this command on yourself.")
+            core.chat_send_player(name, "You can't use this command on yourself.")
             return
         end
 
@@ -184,7 +187,10 @@ minetest.register_chatcommand("invc", {
         local quit_button_clicked = false
 
         local function update_formspec()
-            if not player or not target_player or quit_flags[name] then
+            local target_obj = core.get_player_by_name(target_name)
+            local player_obj = core.get_player_by_name(player_name)
+            if not player_obj or not target_obj or quit_flags[name] then
+                core.close_formspec(player_name, formspec_name)
                 return
             end
 
@@ -194,19 +200,19 @@ minetest.register_chatcommand("invc", {
             formspec = "size[8,9]"
             formspec = formspec .. "label[0,0;"..target_name.."'s Inventory]"
             formspec = formspec .. "list[detached:target_craft_inventory_" .. player_name .. ";target_craft_inventory;0,0.55;3,3;]"
-            minetest.create_detached_inventory("target_craft_inventory_" .. player_name, {
+            core.create_detached_inventory("target_craft_inventory_" .. player_name, {
                 allow_move = function(inv, from_list, from_index, to_list, to_index, count, player)
                     local player_name = player:get_player_name()
-                    if not minetest.check_player_privs(player_name, {inv_manager=true}) then
-                        minetest.chat_send_player(player_name, "You no longer have the 'inv_manager' privilege.")
+                    if not core.check_player_privs(player_name, {inv_manager=true}) then
+                        core.chat_send_player(player_name, "You no longer have the 'inv_manager' privilege.")
                         return 0
                     end
                     return count
                 end,                
                 on_put = function(inv, listname, index, stack, player)
                     local player_name = player:get_player_name()
-                    if not minetest.check_player_privs(player_name, {inv_manager=true}) then
-                        minetest.chat_send_player(player_name, "You no longer have the 'inv_manager' privilege.")
+                    if not core.check_player_privs(player_name, {inv_manager=true}) then
+                        core.chat_send_player(player_name, "You no longer have the 'inv_manager' privilege.")
                         return
                     end
                     if listname == "target_craft_inventory" then
@@ -221,25 +227,25 @@ minetest.register_chatcommand("invc", {
                             end
                         end
                         target_inv:set_list("craft", target_craft_list_updated)
-                        minetest.log("action", name .. " moved " .. stack:get_name() .. " to " .. param .. "'s crafting inventory.")
+                        core.log("action", name .. " moved " .. stack:get_name() .. " to " .. param .. "'s crafting inventory.")
                     end
                 end,
                 on_take = function(inv, listname, index, stack, player)
                     local player_name = player:get_player_name()
-                    if not minetest.check_player_privs(player_name, {inv_manager=true}) then
-                        minetest.chat_send_player(player_name, "You no longer have the 'inv_manager' privilege.")
+                    if not core.check_player_privs(player_name, {inv_manager=true}) then
+                        core.chat_send_player(player_name, "You no longer have the 'inv_manager' privilege.")
                         return
                     end
                     if listname == "target_craft_inventory" then
                         target_craft_list_updated[index] = ItemStack("")
                         target_inv:set_list("craft", target_craft_list_updated)
-                        minetest.log("action", name .. " took " .. stack:get_name() .. " from " .. param .. "'s crafting inventory.")
+                        core.log("action", name .. " took " .. stack:get_name() .. " from " .. param .. "'s crafting inventory.")
                     end
                 end,
                 on_move = function(inv, from_list, from_index, to_list, to_index, count, player)
                     local player_name = player:get_player_name()
-                    if not minetest.check_player_privs(player_name, {inv_manager=true}) then
-                        minetest.chat_send_player(player_name, "You no longer have the 'inv_manager' privilege.")
+                    if not core.check_player_privs(player_name, {inv_manager=true}) then
+                        core.chat_send_player(player_name, "You no longer have the 'inv_manager' privilege.")
                         return
                     end
                     if from_list == "target_craft_inventory" and to_list == "target_craft_inventory" then
@@ -257,16 +263,16 @@ minetest.register_chatcommand("invc", {
 
             -- formspec = formspec .. "button_exit[6.5,8.2;1,0.5;cancel;Cancel]"
 
-            minetest.show_formspec(name, formspec_name, formspec)
-            minetest.after(1, update_formspec)
+            core.show_formspec(name, formspec_name, formspec)
+            core.after(1, update_formspec)
         end
 
         update_formspec()
     end,
 })
 
-if minetest.get_modpath("unified_inventory") then
-    minetest.register_chatcommand("invb", {
+if core.get_modpath("unified_inventory") then
+    core.register_chatcommand("invb", {
         params = "<player> <bag_number>",
         description = "View and modify a player's bag inventory",
         privs = {
@@ -275,19 +281,19 @@ if minetest.get_modpath("unified_inventory") then
         func = function(name, param)
             local args = param:split(" ")
             if #args ~= 2 then
-                minetest.chat_send_player(name, "Usage: /invb <player> <bag_number>")
+                core.chat_send_player(name, "Usage: /invb <player> <bag_number>")
                 return
             end
 
-            local target_player = minetest.get_player_by_name(args[1])
+            local target_player = core.get_player_by_name(args[1])
             local bag_number = tonumber(args[2])
 
             if not target_player or not bag_number or bag_number < 1 or bag_number > 4 then
-                minetest.chat_send_player(name, "Invalid player or bag number.")
+                core.chat_send_player(name, "Invalid player or bag number.")
                 return
             end
 
-            local player_inv = minetest.get_player_by_name(name):get_inventory()
+            local player_inv = core.get_player_by_name(name):get_inventory()
             local target_inv = target_player:get_inventory()
             local player_name = name
             local target_name = target_player:get_player_name()
@@ -296,7 +302,10 @@ if minetest.get_modpath("unified_inventory") then
             local quit_button_clicked = false
 
             local function update_formspec()
-                if not target_player or quit_flags[name] then
+                local target_obj = core.get_player_by_name(target_name)
+                local player_obj = core.get_player_by_name(player_name)
+                if not player_obj or not target_obj or quit_flags[name] then
+                    core.close_formspec(player_name, formspec_name)
                     return
                 end
 
@@ -306,19 +315,19 @@ if minetest.get_modpath("unified_inventory") then
                 formspec = "size[8,9]"
                 formspec = formspec .. "label[0,0;"..target_name.."'s Bag "..bag_number.." Inventory]"
                 formspec = formspec .. "list[detached:target_bag_inventory_" .. player_name .. ";target_bag_inventory;0,0.55;8,4;]"
-                minetest.create_detached_inventory("target_bag_inventory_" .. player_name, {
+                core.create_detached_inventory("target_bag_inventory_" .. player_name, {
                     allow_move = function(inv, from_list, from_index, to_list, to_index, count, player)
                         local player_name = player:get_player_name()
-                        if not minetest.check_player_privs(player_name, {inv_manager=true}) then
-                            minetest.chat_send_player(player_name, "You no longer have the 'inv_manager' privilege.")
+                        if not core.check_player_privs(player_name, {inv_manager=true}) then
+                            core.chat_send_player(player_name, "You no longer have the 'inv_manager' privilege.")
                             return 0
                         end
                         return count
                     end,
                     on_put = function(inv, listname, index, stack, player)
                         local player_name = player:get_player_name()
-                        if not minetest.check_player_privs(player_name, {inv_manager=true}) then
-                            minetest.chat_send_player(player_name, "You no longer have the 'inv_manager' privilege.")
+                        if not core.check_player_privs(player_name, {inv_manager=true}) then
+                            core.chat_send_player(player_name, "You no longer have the 'inv_manager' privilege.")
                             return
                         end
                         if listname == "target_bag_inventory" then
@@ -333,25 +342,25 @@ if minetest.get_modpath("unified_inventory") then
                                 end
                             end
                             target_inv:set_list("bag" .. bag_number .. "contents", target_bag_list_updated)
-                            minetest.log("action", name .. " moved " .. stack:get_name() .. " to " .. target_name .. "'s bag "..bag_number.." inventory.")
+                            core.log("action", name .. " moved " .. stack:get_name() .. " to " .. target_name .. "'s bag "..bag_number.." inventory.")
                         end
                     end,
                     on_take = function(inv, listname, index, stack, player)
                         local player_name = player:get_player_name()
-                        if not minetest.check_player_privs(player_name, {inv_manager=true}) then
-                            minetest.chat_send_player(player_name, "You no longer have the 'inv_manager' privilege.")
+                        if not core.check_player_privs(player_name, {inv_manager=true}) then
+                            core.chat_send_player(player_name, "You no longer have the 'inv_manager' privilege.")
                             return
                         end
                         if listname == "target_bag_inventory" then
                             target_bag_list_updated[index] = ItemStack("")
                             target_inv:set_list("bag" .. bag_number .. "contents", target_bag_list_updated)
-                            minetest.log("action", name .. " took " .. stack:get_name() .. " from " .. target_name .. "'s bag "..bag_number.." inventory.")
+                            core.log("action", name .. " took " .. stack:get_name() .. " from " .. target_name .. "'s bag "..bag_number.." inventory.")
                         end
                     end,
                     on_move = function(inv, from_list, from_index, to_list, to_index, count, player)
                         local player_name = player:get_player_name()
-                        if not minetest.check_player_privs(player_name, {inv_manager=true}) then
-                            minetest.chat_send_player(player_name, "You no longer have the 'inv_manager' privilege.")
+                        if not core.check_player_privs(player_name, {inv_manager=true}) then
+                            core.chat_send_player(player_name, "You no longer have the 'inv_manager' privilege.")
                             return
                         end
                         if from_list == "target_bag_inventory" and to_list == "target_bag_inventory" then
@@ -367,8 +376,8 @@ if minetest.get_modpath("unified_inventory") then
                 formspec = formspec .. "list[current_player;main;0,5.08;8,1;]"
                 formspec = formspec .. "list[current_player;main;0,6.08;8,3;8]"
 
-                minetest.show_formspec(name, formspec_name, formspec)
-                minetest.after(1, update_formspec)
+                core.show_formspec(name, formspec_name, formspec)
+                core.after(1, update_formspec)
             end
 
             update_formspec()
@@ -376,3 +385,71 @@ if minetest.get_modpath("unified_inventory") then
     })
 end
 
+if core.get_modpath("3d_armor") then
+    core.register_chatcommand("inva", {
+        params = "<player>",
+        description = "View a player's armor inventory",
+        privs = {
+            inv_manager = true
+        },
+        func = function(name, param)
+            local player = core.get_player_by_name(name)
+            local target_player = core.get_player_by_name(param)
+
+            if not player or not target_player then
+                return false, "Player not found."
+            end
+
+            if name == param then
+                return false, "You cannot view your own armor with this command."
+            end
+
+            local real_detached_name = param .. "_armor"
+            local real_detached_inv = core.get_inventory({type="detached", name=real_detached_name})
+            if not real_detached_inv then
+                return false, "The player does not have an available armor inventory."
+            end
+
+            local armor_size = real_detached_inv:get_size("armor") or 0
+            local view_detached_name = "inv_manager_view_armor_" .. param
+            local view_detached_inv = core.get_inventory({type="detached", name=view_detached_name})
+            if not view_detached_inv then
+                view_detached_inv = core.create_detached_inventory(view_detached_name, {
+                    allow_move = function()
+                        return 0
+                    end,
+                    allow_put = function()
+                        return 0
+                    end,
+                    allow_take = function()
+                        return 0
+                    end,
+                })
+                view_detached_inv:set_size("armor", armor_size)
+            end
+            local player_name = name
+            local target_name = param
+            local formspec_name = "inv_manager:armor_inventory_" .. player_name
+
+            local function update_formspec()
+                local target_obj = core.get_player_by_name(target_name)
+                if not target_obj or quit_flags[player_name] then
+                    core.close_formspec(player_name, formspec_name)
+                    return
+                end
+                for i = 1, armor_size do
+                    local real_stack = real_detached_inv:get_stack("armor", i)
+                    view_detached_inv:set_stack("armor", i, real_stack)
+                end
+                local formspec = "size[8,6]"
+                    .. "label[0,0;" .. target_name .. "'s Armor Inventory (Read-Only)]"
+                    .. "list[detached:" .. view_detached_name .. ";armor;0,1;" .. armor_size .. ",1]"
+                    .. "list[current_player;main;0,3;8,3]"
+                core.show_formspec(player_name, formspec_name, formspec)
+                core.after(1, update_formspec)
+            end
+
+            update_formspec()
+        end,
+    })
+end
