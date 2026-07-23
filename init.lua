@@ -163,8 +163,8 @@ core.register_chatcommand("invm", {
         end
 
         local target_inv = target_player:get_inventory()
-        local inv_name   = "target_inventory_" .. moderator
-        local list_name  = "target_inventory"
+        local inv_name = "target_inventory_" .. moderator
+        local list_name = "target_inventory"
         local formspec_name = "inv_manager:inventory_" .. moderator
 
         quit_flags[moderator] = nil
@@ -219,7 +219,7 @@ core.register_chatcommand("invc", {
             return
         end
 
-        local mod_player    = core.get_player_by_name(moderator)
+        local mod_player = core.get_player_by_name(moderator)
         local target_player = core.get_player_by_name(target_name)
 
         if not mod_player then return end
@@ -228,9 +228,9 @@ core.register_chatcommand("invc", {
             return
         end
 
-        local target_inv    = target_player:get_inventory()
-        local inv_name      = "target_craft_inventory_" .. moderator
-        local list_name     = "target_craft_inventory"
+        local target_inv = target_player:get_inventory()
+        local inv_name = "target_craft_inventory_" .. moderator
+        local list_name = "target_craft_inventory"
         local formspec_name = "inv_manager:craft_inventory_" .. moderator
 
         quit_flags[moderator] = nil
@@ -281,7 +281,7 @@ if core.get_modpath("unified_inventory") then
             end
 
             local target_name = args[1]
-            local bag_number  = tonumber(args[2])
+            local bag_number = tonumber(args[2])
 
             if not bag_number or bag_number < 1 or bag_number > 4 then
                 core.chat_send_player(moderator, "Bag number must be between 1 and 4.")
@@ -293,7 +293,7 @@ if core.get_modpath("unified_inventory") then
                 return
             end
 
-            local mod_player    = core.get_player_by_name(moderator)
+            local mod_player = core.get_player_by_name(moderator)
             local target_player = core.get_player_by_name(target_name)
 
             if not mod_player then return end
@@ -303,15 +303,15 @@ if core.get_modpath("unified_inventory") then
             end
 
             local real_list_name = "bag" .. bag_number .. "contents"
-            local target_inv     = target_player:get_inventory()
+            local target_inv = target_player:get_inventory()
 
             if not target_inv:get_list(real_list_name) then
                 core.chat_send_player(moderator, target_name .. " has no bag " .. bag_number .. ".")
                 return
             end
 
-            local inv_name      = "target_bag_inventory_" .. moderator
-            local list_name     = "target_bag_inventory"
+            local inv_name = "target_bag_inventory_" .. moderator
+            local list_name = "target_bag_inventory"
             local formspec_name = "inv_manager:bag_inventory_" .. moderator
 
             quit_flags[moderator] = nil
