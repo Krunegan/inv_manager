@@ -1,0 +1,27 @@
+#    Seconds between each check of the viewed inventory.
+inv_manager.sync_interval (Sync interval) float 0.1 0.05 5
+
+#    Seconds a slot changed by someone else stays highlighted. 0 disables highlighting.
+inv_manager.highlight_time (Highlight time) float 3 0 60
+
+#    Allow moderators to open their own inventory (always read only).
+inv_manager.allow_self (Allow opening your own inventory) bool false
+
+#    Players with any of these privileges can be viewed but not modified,
+#    unless the moderator has the "server" privilege. Comma separated.
+inv_manager.protected_privs (Protected privileges) string server
+
+#    Maximum snapshots stored per player.
+inv_manager.max_snapshots (Snapshots per player) int 10 1 100
+
+#    Seconds between automatic snapshots of online players (duplicates are skipped). 0 disables them.
+inv_manager.snapshot_interval (Automatic snapshot interval) int 600 0
+
+#    Save a snapshot right before a player dies.
+inv_manager.snapshot_on_death (Snapshot on death) bool true
+
+#    Save a snapshot when a player leaves the game.
+inv_manager.snapshot_on_leave (Snapshot on leave) bool true
+
+#    Maximum log entries stored per player.
+inv_manager.max_log_entries (Log entries per player) int 200 1 10000
