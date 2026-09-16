@@ -20,7 +20,7 @@ Allows moderators to view and modify other players' inventories **in real time**
 `/invlog <player> [number]` Last changes made
 
 
-### Configuración
+### Configuration
 
 ```
 inv_manager.sync_interval = 0.1
@@ -34,7 +34,7 @@ inv_manager.snapshot_on_leave = true
 inv_manager.max_log_entries = 200
 ```
 
-## Licencia
+## License
 
-* MIT License (MIT) para el código.
-* Attribution 4.0 International (CC BY 4.0) para las texturas.
+* MIT License (MIT) for code.
+* Attribution 4.0 International (CC BY 4.0) for textures.
